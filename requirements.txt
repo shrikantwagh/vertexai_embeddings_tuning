@@ -1,0 +1,14 @@
+google-cloud-aiplatform>=1.66.0
+google-cloud-documentai>=2.30.0
+google-cloud-documentai-toolbox>=0.13.0
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-google-community>=1.0.0
+langchain-text-splitters>=0.2.0
+gcsfs>=2024.6.0
+etils>=1.9.0
+numpy>=1.26.0
+pandas>=2.0.0
+protobuf>=4.25.0
+google-api-core>=2.18.0
+google-cloud-storage>=2.16.0
