@@ -59,9 +59,8 @@ class EmbeddingTuningJob:
         )
 
         # This call blocks by default until the pipeline finishes.
-        #job.run()
-
-        job.run(sync=False)
+        # We use submit() to get the job object and then wait for it later.
+        job.submit()
         print(f"Pipeline submitted: {job.resource_name}")
         print(f"Console: {job._dashboard_uri()}")
 
