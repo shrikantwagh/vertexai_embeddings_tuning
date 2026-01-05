@@ -53,7 +53,7 @@ def maybe_create_bucket(project_id: str, bucket_uri: str, region: str) -> None:
 # End-to-end flow
 # -----------------------------
 
-def run_end_to_end(cfg: AppConfig, *, create_bucket: bool) -> dict:
+def run_end_to_end(cfg: AppConfig, *, create_bucket: bool, force_ocr: bool) -> dict:
     """Run the full embeddings tuning pipeline, then deploy and demo retrieval.
 
     Returns a dict of resource IDs and output locations you can reuse for retrieval / cleanup.
@@ -66,15 +66,15 @@ def run_end_to_end(cfg: AppConfig, *, create_bucket: bool) -> dict:
     aiplatform.init(project=cfg.project_id, location=cfg.region, staging_bucket=cfg.bucket_uri)
 
     # ---- 1) Document AI OCR → LangChain Documents ----
-    # Create a short random ID to avoid name collisions.
-    rand_id = "".join(random.choices(string.ascii_lowercase + string.digits, k=4))
-    processor_display_name = f"preprocess-docs-llm-{rand_id}"
+    # Use a deterministic name for the processor.
+    processor_display_name = "preprocess-docs-llm-tutorial"
 
     pre = DocAIPreprocessor(
         project_id=cfg.project_id,
         location=cfg.docai_location,
         gcs_output_path=cfg.processed_ocr_uri,
         processor_display_name=processor_display_name,
+        force_ocr=force_ocr,
     )
 
     docs = pre.parse_pdf_from_gcs(cfg.pdf_gcs_path)
@@ -146,6 +146,9 @@ def run_end_to_end(cfg: AppConfig, *, create_bucket: bool) -> dict:
         base_model_version_id=cfg.base_model_version_id,
     )
 
+    print("Waiting for pipeline job to complete...")
+    job.wait()
+
     metrics_df = tuning.get_metrics(job)
     print("Pipeline metrics:")
     print(metrics_df.to_string(index=False))
@@ -207,7 +210,7 @@ def run_retrieve(project_id: str, region: str, endpoint_id: str, training_output
     retriever = Retriever(project_id=project_id, region=region, endpoint_id=endpoint_id)
 
     queries = [
-        "What about the revenues?",
+        "What about the revenues?", "Who is Alphabet?", "What about the costs?"
         "Who is Alphabet?",
         "What about the costs?",
     ]
@@ -300,6 +303,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--num-questions-per-chunk", type=int, default=3)
     p_run.add_argument("--batch-size", type=int, default=32)
     p_run.add_argument("--create-bucket", type=str, default="false")
+    p_run.add_argument("--force-ocr", type=str, default="false", help="Force re-running OCR even if output exists.")
 
     # retrieve
     p_ret = sub.add_parser("retrieve", help="Run retrieval demo given endpoint and training output dir.")
@@ -345,7 +349,7 @@ def main() -> None:
 
         cfg.validate()
 
-        result = run_end_to_end(cfg, create_bucket=str_to_bool(args.create_bucket))
+        result = run_end_to_end(cfg, create_bucket=str_to_bool(args.create_bucket), force_ocr=str_to_bool(args.force_ocr))
         print("\nRun complete. Save these for reuse / cleanup:")
         for k, v in result.items():
             if k == "metrics":
