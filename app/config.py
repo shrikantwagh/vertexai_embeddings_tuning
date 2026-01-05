@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-
+import os
 @dataclass(frozen=True)
 class AppConfig:
     """All configuration needed to run the embeddings tuning flow.
@@ -16,9 +16,10 @@ class AppConfig:
         We derive it from the Vertex region by taking the first segment.
     """
 
-    project_id: str
-    region: str = "us-central1"
-    bucket_uri: str = ""
+    project_id: str = os.getenv("PROJECT_ID")
+    region: str = os.getenv("REGION", "us-central1")
+    bucket_uri: str = os.getenv("BUCKET_URI")
+
     raw_data_uri: str = "gs://github-repo/embeddings/get_started_with_embedding_tuning"
     pdf_name: str = "goog-10-k-2023.pdf"
 
@@ -76,3 +77,20 @@ class AppConfig:
     def pdf_gcs_path(self) -> str:
         """Full gs:// path to the input PDF."""
         return f"{self.raw_data_uri}/{self.pdf_name}"
+    
+    def validate(self) -> None:
+        """
+        Validate that all required configuration values are present.
+        Raises a clear error early if something is missing.
+        """
+        missing = []
+        if not self.project_id:
+            missing.append("PROJECT_ID")
+        if not self.bucket_uri:
+            missing.append("BUCKET_URI")
+
+        if missing:
+            raise RuntimeError(
+                f"Missing required environment variables: {', '.join(missing)}\n"
+                f"Did you create a .env file?"
+            )

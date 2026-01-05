@@ -46,7 +46,7 @@ class Retriever:
         """Call the endpoint to generate embeddings for the given queries."""
         endpoint = self._endpoint()
 
-        # Each instance follows the Vertex embedding prediction schema used in the notebook.
+        # Each instance follows the Vertex embedding prediction schema.
         instances = [{"content": t, "task_type": task_type, "title": title} for t in query_texts]
 
         response = endpoint.predict(instances=instances)

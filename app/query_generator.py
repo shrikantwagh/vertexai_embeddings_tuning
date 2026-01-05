@@ -12,10 +12,10 @@ from vertexai.preview import generative_models
 class GeminiQueryGenerator:
     """Generates synthetic retrieval queries for each chunk using Gemini.
 
-    The notebook generates *one* question per chunk (default 3 per chunk),
+    Generates *one* question per chunk (default 3 per chunk),
     by prompting Gemini to act as an exam writer and craft questions about the text.
 
-    We return the result as a LangChain `Document`, mirroring the notebook:
+    Return the result as a LangChain `Document`:
       - `page_content` holds the generated query text
       - `metadata` stores the original chunk/page number so we can build labels
     """

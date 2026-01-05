@@ -27,7 +27,7 @@ from .retrieval import Retriever
 def maybe_create_bucket(project_id: str, bucket_uri: str, region: str) -> None:
     """Create a GCS bucket if it doesn't exist.
 
-    The notebook used: `gsutil mb -l {REGION} -p {PROJECT_ID} {BUCKET_URI}`.
+    gcp shell: `gsutil mb -l {REGION} -p {PROJECT_ID} {BUCKET_URI}`.
 
     Here we use the Storage client instead, so the whole flow is Python.
     """
@@ -62,12 +62,11 @@ def run_end_to_end(cfg: AppConfig, *, create_bucket: bool) -> dict:
         maybe_create_bucket(cfg.project_id, cfg.bucket_uri, cfg.region)
 
     # Initialize Vertex AI libraries (Gemini + Pipelines/Endpoints).
-    # The notebook used `vertexai.init(project=..., location=..., staging_bucket=...)`.
     vertexai.init(project=cfg.project_id, location=cfg.region, staging_bucket=cfg.bucket_uri)
     aiplatform.init(project=cfg.project_id, location=cfg.region, staging_bucket=cfg.bucket_uri)
 
     # ---- 1) Document AI OCR → LangChain Documents ----
-    # Create a short random ID to avoid name collisions (same as notebook).
+    # Create a short random ID to avoid name collisions.
     rand_id = "".join(random.choices(string.ascii_lowercase + string.digits, k=4))
     processor_display_name = f"preprocess-docs-llm-{rand_id}"
 
@@ -91,7 +90,7 @@ def run_end_to_end(cfg: AppConfig, *, create_bucket: bool) -> dict:
         is_separator_regex=False,
     )
 
-    # In the notebook, each LangChain doc was treated like a page.
+    # Each LangChain doc is treated like a page.
     # We attach page number metadata starting at 1.
     document_content = [doc.page_content for doc in docs]
     document_metadata = [{"page": idx} for idx, _ in enumerate(docs, start=1)]
@@ -115,7 +114,7 @@ def run_end_to_end(cfg: AppConfig, *, create_bucket: bool) -> dict:
     builder = DatasetBuilder(processed_tuning_uri=cfg.processed_tuning_uri, timestamp=cfg.timestamp)
 
     corpus_df, query_df, _, train_df, test_df = builder.build_frames(
-        chunks=chunks[: len(generated_queries)],  # align lengths safely
+        chunks=chunks,
         generated_queries=generated_queries,
         train_fraction=0.8,
         seed=7,
@@ -124,7 +123,7 @@ def run_end_to_end(cfg: AppConfig, *, create_bucket: bool) -> dict:
     paths = builder.write_to_gcs(corpus_df, query_df, train_df, test_df)
 
     # ---- 5) Launch tuning pipeline ----
-    # Tutorial uses: ITERATIONS = len(train_df) // BATCH_SIZE
+
     iterations = max(1, len(train_df) // max(1, cfg.batch_size))
 
     tuning = EmbeddingTuningJob(
@@ -292,7 +291,7 @@ def build_parser() -> argparse.ArgumentParser:
     # run
     p_run = sub.add_parser("run", help="Run OCR → dataset → tuning → deploy → retrieval demo.")
     p_run.add_argument("--project-id", required=True)
-    p_run.add_argument("--region", default="us-central1")
+    p_run.add_argument("--region", default="us-us-east1")
     p_run.add_argument("--bucket-uri", required=True)
     p_run.add_argument("--raw-data-uri", default="gs://github-repo/embeddings/get_started_with_embedding_tuning")
     p_run.add_argument("--pdf-name", default="goog-10-k-2023.pdf")
@@ -305,7 +304,7 @@ def build_parser() -> argparse.ArgumentParser:
     # retrieve
     p_ret = sub.add_parser("retrieve", help="Run retrieval demo given endpoint and training output dir.")
     p_ret.add_argument("--project-id", required=True)
-    p_ret.add_argument("--region", default="us-central1")
+    p_ret.add_argument("--region", default="us-east1")
     p_ret.add_argument("--endpoint-id", required=True, help="Full endpoint resource name or ID.")
     p_ret.add_argument("--training-output-dir", required=True, help="GCS directory from pipeline training output.")
     p_ret.add_argument("--k", type=int, default=10)
@@ -313,7 +312,7 @@ def build_parser() -> argparse.ArgumentParser:
     # cleanup
     p_cl = sub.add_parser("cleanup", help="Delete endpoint/model/pipeline job (best-effort).")
     p_cl.add_argument("--project-id", required=True)
-    p_cl.add_argument("--region", default="us-central1")
+    p_cl.add_argument("--region", default="us-east1")
     p_cl.add_argument("--endpoint-id", default=None)
     p_cl.add_argument("--model-id", default=None)
     p_cl.add_argument("--pipeline-job-id", default=None)
@@ -343,6 +342,9 @@ def main() -> None:
             num_questions_per_chunk=args.num_questions_per_chunk,
             batch_size=args.batch_size,
         )
+
+        cfg.validate()
+
         result = run_end_to_end(cfg, create_bucket=str_to_bool(args.create_bucket))
         print("\nRun complete. Save these for reuse / cleanup:")
         for k, v in result.items():

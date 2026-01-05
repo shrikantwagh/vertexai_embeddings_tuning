@@ -11,7 +11,6 @@ from langchain_core.documents import Document
 class DatasetBuilder:
     """Builds corpus/query JSONL files and train/test TSV labels, written to GCS.
 
-    This mirrors the notebook:
       - corpus.jsonl: [{"_id": ..., "text": ..., "doc_id": ...}, ...]
       - query.jsonl:  [{"_id": ..., "text": ..., "doc_id": ...}, ...]
       - train.tsv / test.tsv: columns [corpus-id, query-id, score]
@@ -31,7 +30,7 @@ class DatasetBuilder:
         """Create corpus/query dataframes and split label dataframe."""
         corpus_df = pd.DataFrame(
             {
-                "_id": [f"text_{idx}" for idx in range(len(generated_queries))],
+                "_id": [f"text_{idx}" for idx, _ in enumerate(chunks)],
                 "text": [chunk.page_content for chunk in chunks],
                 # doc_id corresponds to original page number (stored in metadata)
                 "doc_id": [chunk.metadata.get("page") for chunk in chunks],

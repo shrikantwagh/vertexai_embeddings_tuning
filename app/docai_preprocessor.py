@@ -6,15 +6,15 @@ from typing import List
 
 from google.api_core.client_options import ClientOptions
 from google.cloud import documentai
-from langchain_google_community.document_loaders import Blob, DocAIParser
 from langchain_core.documents import Document
+from langchain_core.document_loaders import Blob
+from langchain_google_community import DocAIParser
 
 
 @dataclass
 class DocAIPreprocessor:
     """Runs Document AI OCR on a PDF in GCS and returns LangChain Documents.
 
-    This matches the notebook approach:
       - Create an OCR Processor
       - Run `DocAIParser.docai_parse()` to process the PDF
       - Poll until it finishes
